@@ -5,37 +5,7 @@ from retry_requests import retry
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 import matplotlib.pyplot as plt
-
-
-class LSTMWeatherModel(nn.Module):
-    def __init__(self, n_input, n_hidden, n_out, num_layers):
-        super(LSTMWeatherModel, self).__init__()
-
-        self.num_layers = num_layers
-        self.hidden_layer_size = n_hidden
-
-        # Stacked LSTM layer
-        self.lstm = nn.LSTM(n_input, n_hidden, num_layers, batch_first=True)
-
-        self.linear1 = nn.Linear(n_hidden, n_hidden)
-        self.linear2 = nn.Linear(n_hidden, n_hidden)
-        self.linear3 = nn.Linear(n_hidden, n_out)
-
-
-    def forward(self, x):
-        # Stacked LSTM
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_layer_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_layer_size).to(x.device)
-        x, _ = self.lstm(x, (h0, c0))
-        x = x[:, -1, :]
-
-        # Regular feed forward network
-        x = nn.SiLU()(self.linear1(x))
-        x = nn.SiLU()(self.linear2(x))
-        x = self.linear3(x)
-        return x
 
 
 def encode_cycle(cycle_index, cycle_length, to_numpy=False):
@@ -46,13 +16,14 @@ def encode_cycle(cycle_index, cycle_length, to_numpy=False):
     return cos_encoding.to_numpy(), sin_encoding.to_numpy()
 
 
-def model_inference(model, day_data, hours_to_predict):
+def model_inference(model, scaler, day_data, hours_to_predict):
     if day_data.shape[0] != 24:
         print('Invalid input data')
         raise Exception
     day = day_data['date'].dt.dayofyear[23]
     hour = day_data['date'].dt.hour[23]
     day_data = day_data.drop(columns='date').to_numpy()
+    day_data[:, :8] = scaler.transform(day_data[:, :8])
     predictions = np.zeros((hours_to_predict, 8))
     day_data = torch.tensor([day_data], dtype=torch.float32)
     for i in range(hours_to_predict):
@@ -114,6 +85,7 @@ if __name__ == '__main__':
         freq=pd.Timedelta(seconds=hourly.Interval()),
         inclusive="left"
     )}
+
     hourly_data["temperature_2m"] = hourly_temperature_2m
     hourly_data["apparent_temperature"] = hourly_apparent_temperature
     hourly_data["rain"] = hourly_rain
@@ -128,12 +100,13 @@ if __name__ == '__main__':
     df['day_cos'], df['day_sin'] = encode_cycle(df['date'].dt.dayofyear, 365)
     df['hour_cos'], df['hour_sin'] = encode_cycle(df['date'].dt.hour, 24)
     print(df)
-    model = torch.load('trained_models/weather_model.pth')
-
-    n_predictions = 168
-
-    predictions = model_inference(model, df, n_predictions)
+    model = torch.jit.load('trained_models/weather_model.pth')
     scaler = joblib.load('trained_models/scaler.save')
+
+    n_predictions = 48
+
+    predictions = model_inference(model, scaler, df, n_predictions)
+
     predictions = scaler.inverse_transform(predictions)
     plt.plot(range(n_predictions), predictions[:, 0])
     plt.show()

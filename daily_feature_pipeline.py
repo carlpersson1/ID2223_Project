@@ -1,20 +1,26 @@
 import os
 import modal
+import numpy as np
+import pandas as pd
+import openmeteo_requests
+import requests_cache
+from retry_requests import retry
+import hopsworks
 
 LOCAL=False
 
 if LOCAL == False:
    stub = modal.Stub("weather_daily")
 
-   image = modal.Image.debian_slim().pip_install(["hopsworks", "numpy"])
+   image = modal.Image.debian_slim().pip_install(["hopsworks", "numpy", "joblib", "torch", "openmeteo_requests",
+                                                  "requests_cache", "retry_requests", "matplotlib", "scikit-learn"])
 
-   @stub.function(image=image, schedule=modal.Period(days=1), secret=modal.Secret.from_name("id2223"))
+   @stub.function(image=image, schedule=modal.Period(days=1), secret=modal.Secret.from_name("HOPSWORKS_API_KEY"))
    def f():
        g()
 
 
 def encode_cycle(cycle_index, cycle_length, to_numpy=False):
-    import numpy as np
     cos_encoding = np.cos(cycle_index * 2 * np.pi / cycle_length)
     sin_encoding = np.sin(cycle_index * 2 * np.pi / cycle_length)
     if not to_numpy:
@@ -26,11 +32,6 @@ def get_new_data(latest_date):
     """
     Returns a DataFrame containing one random iris flower
     """
-    import pandas as pd
-    import openmeteo_requests
-    import requests_cache
-    from retry_requests import retry
-
     from_date = latest_date.strftime('%Y-%m-%d')
     to_date = pd.Timestamp.now().strftime('%Y-%m-%d')
 
@@ -89,16 +90,13 @@ def get_new_data(latest_date):
     hourly_dataframe = hourly_dataframe.dropna()
 
     # Encode day/hour cycle
-    hourly_data["day_cos"], hourly_data["day_sin"] = encode_cycle(hourly_dataframe['date'].dt.dayofyear, 365)
+    hourly_dataframe["day_cos"], hourly_dataframe["day_sin"] = encode_cycle(hourly_dataframe['date'].dt.dayofyear, 365)
     hourly_dataframe['hour_cos'], hourly_dataframe['hour_sin'] = encode_cycle(hourly_dataframe['date'].dt.hour, 24)
 
     return hourly_dataframe
 
 
 def g():
-    import hopsworks
-    import pandas as pd
-
     project = hopsworks.login()
     fs = project.get_feature_store()
 
@@ -124,6 +122,6 @@ if __name__ == "__main__":
     if LOCAL == True :
         g()
     else:
-        stub.deploy("iris_daily")
+        stub.deploy("weather_daily")
         with stub.run():
             f()
