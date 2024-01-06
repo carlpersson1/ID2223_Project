@@ -93,6 +93,9 @@ def g():
     for i, col in enumerate(df.columns[1:9]):
         plt.plot(x1, prediction[:, i])
         plt.gcf().autofmt_xdate()
+        plt.xlabel('Date')
+        plt.ylabel(col)
+        plt.title('Prediction of ' + col)
         plt.savefig(fig_dir + '/pred_' + col + '.png')
         plt.clf()
 
@@ -101,6 +104,9 @@ def g():
 
         plt.plot(x2, prediction_eval[:, i], label='Prediction')
         plt.plot(x2, df.iloc[-24:][col], label='Outcome')
+        plt.xlabel('Date')
+        plt.ylabel(col)
+        plt.title('Prediction of ' + col)
         plt.gcf().autofmt_xdate()
         plt.legend()
         plt.savefig(fig_dir + '/prev_' + col + '.png')
