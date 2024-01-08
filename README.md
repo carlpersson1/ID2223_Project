@@ -1,6 +1,6 @@
 # ID2223 Final Project
 
-This project deals with the task of predicting the weather in Stockholm. It utilizes the OpenMeteo API as the data source and fetches weather data to train and do inference. We use PyTorch to implement the model and Hopswork for the feature store. For the UI, a HuggingFace Spaces app is created that gives the current weather forecast for the next day.
+This project deals with the task of predicting the weather in Stockholm. It utilizes the OpenMeteo API as the data source and fetches weather data to train and do inference. We use PyTorch to implement the model and Hopsworks for the feature store. For the UI, a HuggingFace Spaces app is created that gives the current weather forecast for the next day.
 
 # Feature pipeline
 
@@ -14,7 +14,7 @@ In many datasets, dates and times are crucial features, but their standard numer
 
 To accurately represent this cyclical nature, we use sine and cosine functions to encode the days of the year and the hours of the day. This transformation maps these time features onto a circle, ensuring that values close in time are also close in their transformed space. This method enhances the model's ability to recognize and utilize these temporal relationships during training.
 
-The data gets uploaded to the feature store stored as a feature group in Hopswork, which is going to be used for the training.
+The data gets uploaded to the feature store stored as a feature group in Hopsworks, which is going to be used for the training.
 
 # Training pipeline
 
@@ -42,9 +42,10 @@ In the data feature pipeline the goal is to continuously fetch data from OpenMet
 
 # HugginFace Spaces App
 
-TODO
+Our [app](https://huggingface.co/spaces/carlpersson/WeatherPrediction) showcases the predictions for the next 24 hours by using the daily inference pipeline. The  temperature in °C, apparent temperature in °C, rain in mm, snowfall in cm, surface pressure in hPa, cloud cover in %, wind speed in km/h and wind direction in degrees are predicted and updated everyday. These predictions are based on the latest data from the dataset, which is updated every day with two day old data. The predictions are based on the weather data from Stockholm specifically and the model predictions are unfortunately already outdated by the time they are made, due to the delay in data updates of our database. In addition to the predictions for the next 24 hours, the previous predictions (last 24 bours) together with the actual outcome of the weather (fetched from OpenMeteo) is merged, so that the accuracy of the predictions of the past day can be observed. 
+
 # Running the code
 
-In order to run the feature pipeline a Hopswork account is necessary to create the feature group. We have, in addition to the notebook files, regular python files as well that showcases the pipeline code and are easier to run. 
+In order to run the feature pipeline a Hopsworks account is necessary to create the feature group. We have, in addition to the notebook files, regular python files as well that showcases the pipeline code and are easier to run. 
 
 TODO: Are other things necessary?
