@@ -18,7 +18,7 @@ params = {
 	"latitude": 59.3294,
 	"longitude": 18.0687,
 	"start_date": "2018-01-01",
-	"end_date": "2023-12-25",
+	"end_date": pd.Timestamp.now().strftime('%Y-%m-%d'),
 	"hourly": ["temperature_2m", "apparent_temperature", "rain", "snowfall", "surface_pressure", "cloud_cover", "wind_speed_10m", "wind_direction_10m", "wind_gusts_10m"],
 	"timezone": "Europe/Berlin"
 }

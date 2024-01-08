@@ -20,19 +20,33 @@ The data gets uploaded to the feature store stored as a feature group in Hopswor
 
 In the training pipeline we load the features, process them and train a model, which is then pushed to the model registry. The features are standardized by removing the mean and scaling to unit variance with `StandardScaler()`. 
 
-The first model we have tried to use is a simple neural network, which performed not good enough. Therefore we switched to an LSTM model, which...
+The first model we have tried to use is a simple neural network, which performed poorly. Therefore, we switched to an LSTM model, which 
+performed considerably better. The stacked LSTM is fairly similar to the linear layer, but
+is capable of holding short term memory as well. This is done by inputting a sequence of data
+into the model, which allows it to make inference based on data further back in time. Making it
+a simple but powerful layer for weather prediction purposes.
 
-TODO: Describe the create windows function and model
+The stacked LSTM function requires an input sequence in order to make use of the short 
+term memory part of the layer. This was done by creating 'windows' of data
+where each input corresponds to a sequence of 24 hours of input data. Where the values to predict
+are the features for the next hour i.e. the 25th hour in the sequence, which is not input into the
+model.
 
-The model is trained for 50 epochs on 80% of the data, by using Adam with a batch size of 512. The learning rate is 0.0005 and weight decay is used as well with 0.0005. As the loss function we used the mean squared error. We achieve relatively good performance in 50 epochs, with a training error of close to 0.1 and a validation loss of around 0.18.
+Since the model predicts all the input features, but one hour in advance, we can use the output
+of the model in combination with the previous 23 hours to predict two hours in advance, and so on.
+This allows the model to predict arbitrarily far into the future, although with compounding errors.
 
-TODO: Talk more about performance, do we have more metrics?
+The model is trained for 50 epochs on 80% of the data, by using AdamW with a batch size of 512. The learning rate is 0.0005 and weight decay is used as well with 0.0005. As the loss function we used the mean squared error. We achieve relatively good performance in 50 epochs, with a training error of close to 0.1 and a validation loss of around 0.18.
+
 
 # Daily inference pipeline
 
 In the daily inference pipeline, the model is used to make predictions for the next 24 hours. The results are then used for the app to display the current weather forecasts. The general process is to get the model from the model registry and the weather data from the feature group stored in the feature store. The model predicts the weather variables for the next 24 hours and the scaler, which was saved in the training pipeline is used to revert the values back to their original form (from normalized to original values). 
 
-TODO: Describe model_inference function (with encode_cycle)
+Since we already know that the model is supposed to predict the weather one hour in advance, we 
+do not need to have it infer the timestamp of the generated features. Instead this is done artifically
+by encoding the time/date + 1 hour, into the sine and cosine representation for use in predicting the next 
+hour after that.
 
 In addition the performance of the last prediction, so from the day before, is evaluated, by comparing it to the weather data that was recorded by OpenMeteo from that day. Since, the feature pipeline has fetched the data already for the previous day, it can be used to compare and evaluate the performance of our model. For both the current prediction (next 24 hours) and the last prediction evaluation (previous 24 hours) figures are created to be stored in the feature store and used for visual representation in the app. 
 
@@ -46,6 +60,14 @@ Our [app](https://huggingface.co/spaces/carlpersson/WeatherPrediction) showcases
 
 # Running the code
 
-In order to run the feature pipeline a Hopsworks account is necessary to create the feature group. We have, in addition to the notebook files, regular python files as well that showcases the pipeline code and are easier to run. 
+In order to run the code, firstly run the feature_pipeline.py. This code (given that it
+has access to a Hopswork account API key) will upload the cleaned weather data between 2018 and now 
+to a feature group in Hopsworks. By running the training_pipeline.py file, the weather data 
+will be downloaded and used to train a LSTM weather prediction model which is then uploaded to hopsworks.
 
-TODO: Are other things necessary?
+Next the files deploy daily_feature_pipeline.py and daily_inference_pipeline.py need to be deployed
+on modal, or any similar service (might require small changes in code). These files
+will download the latest weather data daily and do batch inference to predict the next 
+24 hours in the sequence. Images showing the prediction and previous performance is uploaded
+to Hopsworks, which can then be viewed by uploading the app.py and requirements.txt to a
+Huggingface space and deploying it.
